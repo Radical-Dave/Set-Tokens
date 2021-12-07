@@ -4,7 +4,7 @@
 #####################################################
 <#PSScriptInfo
 
-.VERSION 0.1
+.VERSION 0.3
 
 .GUID bfd55243-60dd-4394-a80e-835718187e1f
 
@@ -59,52 +59,94 @@ begin {
 	$ErrorActionPreference = 'Stop'
 	$PSScriptName = ($MyInvocation.MyCommand.Name.Replace(".ps1",""))
 	$PSCallingScript = if ($MyInvocation.PSCommandPath) { $MyInvocation.PSCommandPath | Split-Path -Parent } else { $null }
-	Write-Verbose "$PSScriptRoot\$PSScriptName $source $destination called by:$PSCallingScript"
+	$currLocation = Get-Location
+	Write-Verbose "$PSScriptRoot\$PSScriptName $source $destination called by:$PSCallingScript from $currLocation"
 
 	function Set-TokenContent($string) {
 		if (!$string) { return $string }
-		$results = $string		
+		$results = $string
 		$tokens = [regex]::Matches($string,$regex)
-		if (!$tokens) { return $string }
-		$tokens | Foreach-Object {
+		if (!$tokens) {
+			return $string
+		}
+		$tokens | Foreach-Object {			
 			$org = $_.groups[0].value
 			$token = $org
+			#Write-Verbose "token:$token"
 			if ($token -like '$(*') {
 				$token = $token.Remove(0,2) 
 				$token = $token.Substring(0, $token.Length - 1)
 			}
 			$value = [System.Environment]::GetEnvironmentVariable($token)
-			$results = $string.replace($org,$value)
+			#Write-Verbose "Set-TokenContent:$token=$value"
+			$results = $results.replace($org,$value)
 		}
 		return $results
 	}
+ 
+	if (!$source) { $source = "$currLocation\*.json" }
+	Write-Host "source:$source"
 
-	if (!$source) { $source = Get-Location }
-	if (-not (Test-Path $source)) {
-		$results = Set-TokenContent $source
-	}
-	Get-ChildItem –Path $source -recurse | Foreach-Object {
-		$path = $_.FullName
-		$content = (Get-Content $path)
-		$string = Set-TokenContent $content
-		if ($destination) {
-			if ($destination.IndexOf('.') -gt -1) {
-				$string | Out-File $destination
-			} else {
-				Write-Verbose "path:$path"
-				Write-Verbose "source:$source"			
-				if ($path.EndsWith($source)) { $destination = $path.Replace($source, "$destination\$source") }
-				Write-Verbose "destination:$destination"
-				$parent = Split-Path $destination -Parent
-				if (-not (Test-Path $parent)) {New-Item -Path $parent -ItemType Directory | Out-Null}
-				$string | Out-File $destination
+	if (Test-Path $PSScriptRoot\*.env*){
+		Get-ChildItem –Path $PSScriptRoot\*.env* | Foreach-Object {
+			$content = (Get-Content $_.FullName)
+			$content | ForEach-Object {
+				if ($_ -like '*=*') {
+					$sp = $_.Split('=')
+					[System.Environment]::SetEnvironmentVariable($sp[0], $sp[1])
+				}
 			}
-		} else {
-			$string | Out-File $path #.replace('.json','-new.json')
 		}
+	}
 
-		$results = $path
-	}	
+	if (-not (Test-Path $source) -or (Test-Path $source -PathType Leaf)) {
+		if(-not (Test-Path $source -PathType Leaf)) {
+			$results = Set-TokenContent $source
+		} else {
+			$path = $source
+			$source = Get-Content $source
+			#Write-Verbose "source:$source"
+			$results = Set-TokenContent $source
+			if (!$destination) {$destination = $path} elseif ($destination.IndexOf(':') -eq -1 -and $destination.Substring(0,1) -ne '\') {$destination = Join-Path $currLocation $destination}
+			$destParent = Split-Path $destination -Parent
+			#Write-Verbose "destParent:$destParent"
+			if (-not (Test-Path $destParent)) { New-Item -Path $destParent -ItemType Directory | Out-Null}
+			$results | Out-File $destination
+		}
+	} else {
+		#Write-Verbose "source:$source"
+		Get-ChildItem –Path $source | Foreach-Object {
+			$path = $_.FullName
+			#Write-Verbose "path:$path"
+			if (!(Test-Path $path -PathType Leaf)) {
+				#Write-Verbose "SKIPPED Folder:$path"
+			} else {
+				$string = Set-TokenContent (Get-Content $path)
+				#Write-Verbose "tokenized:$string"
+				if (!$destination) {
+					#Write-Verbose "updated:$path"
+					$string | Out-File $path
+				} else {
+					if ($destination.IndexOf('.') -gt -1) {
+						#Write-Verbose "updated:$destination"
+						$string | Out-File $destination
+					} else {
+						#Write-Verbose "path:$path"
+						#Write-Verbose "source:$source"			
+						#Write-Verbose "destination:$destination"
+						$currDestination = "$destination\$($_.Name)"
+						#Write-Verbose "currDestination:$currDestination"
+						$destParent = Split-Path $currDestination -Parent
+						#Write-Verbose "destParent:$destParent"
+						if (-not (Test-Path $destParent)) { New-Item -Path $destParent -ItemType Directory | Out-Null}
+						#Write-Verbose "updated:$currDestination"
+						$string | Out-File $currDestination
+					}
+				}
+			}
+			$results = $path
+		}	
+	}
 	Write-Verbose "$PSScriptName $path end"
 	return $results
 }
