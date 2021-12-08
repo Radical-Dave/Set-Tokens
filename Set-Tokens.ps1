@@ -4,7 +4,7 @@
 #####################################################
 <#PSScriptInfo
 
-.VERSION 0.3
+.VERSION 0.5
 
 .GUID bfd55243-60dd-4394-a80e-835718187e1f
 
@@ -59,7 +59,7 @@ begin {
 	$ErrorActionPreference = 'Stop'
 	$PSScriptName = ($MyInvocation.MyCommand.Name.Replace(".ps1",""))
 	$PSCallingScript = if ($MyInvocation.PSCommandPath) { $MyInvocation.PSCommandPath | Split-Path -Parent } else { $null }
-	$currLocation = Get-Location
+	$currLocation = "$(Get-Location)"
 	Write-Verbose "$PSScriptRoot\$PSScriptName $source $destination called by:$PSCallingScript from $currLocation"
 
 	function Set-TokenContent($string) {
@@ -87,20 +87,42 @@ begin {
 	if (!$source) { $source = "$currLocation\*.json" }
 	Write-Host "source:$source"
 
-	if (Test-Path $PSScriptRoot\*.env*){
-		Get-ChildItem –Path $PSScriptRoot\*.env* | Foreach-Object {
-			$content = (Get-Content $_.FullName)
-			$content | ForEach-Object {
-				if ($_ -like '*=*') {
-					$sp = $_.Split('=')
-					[System.Environment]::SetEnvironmentVariable($sp[0], $sp[1])
+	@((Split-Path $profile -Parent),$PSScriptRoot,("$currLocation" -ne "$PSScriptRoot" ? $currLocation : ''),(Split-Path $source -Parent)).foreach({
+		try {
+			$p = $_
+			if ($p) {
+				#Write-Verbose "checking:$p\*.env*"
+				if (Test-Path $p\*.env*) {
+					Get-ChildItem –Path $p\*.env* | Foreach-Object {
+						try {
+							$f = $_
+							#Write-Verbose "checking:$($f.FullName)"							
+							$content = (Get-Content $f.FullName)
+							$content | ForEach-Object {
+								if (-not ($_ -like '#*') -and  ($_ -like '*=*')) {
+									$sp = $_.Split('=')
+									#Write-Verbose "Set-Env $($sp[0])=$($sp[1])"
+									[System.Environment]::SetEnvironmentVariable($sp[0], $sp[1])
+								}
+							}
+						}
+						catch {
+							Write-Error "ERROR Set-Env $p-$f" -InformationVariable results
+						}
+					}
+				} else { 
+					#Write-Verbose "skipped:$p no *.env* files found"
 				}
 			}
 		}
-	}
+		catch {
+			Write-Error "ERROR Set-Env $p" -InformationVariable results
+		}
+	})
 
 	if (-not (Test-Path $source) -or (Test-Path $source -PathType Leaf)) {
 		if(-not (Test-Path $source -PathType Leaf)) {
+			Write-Verbose "Leaf!:$source"
 			$results = Set-TokenContent $source
 		} else {
 			$path = $source
