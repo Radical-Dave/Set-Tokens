@@ -4,7 +4,7 @@
 #####################################################
 <#PSScriptInfo
 
-.VERSION 0.5
+.VERSION 0.6
 
 .GUID bfd55243-60dd-4394-a80e-835718187e1f
 
@@ -85,7 +85,7 @@ begin {
 	}
  
 	if (!$source) { $source = "$currLocation\*.json" }
-	Write-Host "source:$source"
+	#Write-Verbose "source:$source"
 
 	@((Split-Path $profile -Parent),$PSScriptRoot,("$currLocation" -ne "$PSScriptRoot" ? $currLocation : ''),(Split-Path $source -Parent)).foreach({
 		try {
@@ -122,7 +122,7 @@ begin {
 
 	if (-not (Test-Path $source) -or (Test-Path $source -PathType Leaf)) {
 		if(-not (Test-Path $source -PathType Leaf)) {
-			Write-Verbose "Leaf!:$source"
+			#Write-Verbose "Leaf!:$source"
 			$results = Set-TokenContent $source
 		} else {
 			$path = $source
