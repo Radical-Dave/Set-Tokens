@@ -4,7 +4,7 @@
 #####################################################
 <#PSScriptInfo
 
-.VERSION 0.6
+.VERSION 0.7
 
 .GUID bfd55243-60dd-4394-a80e-835718187e1f
 
@@ -60,7 +60,7 @@ begin {
 	$PSScriptName = ($MyInvocation.MyCommand.Name.Replace(".ps1",""))
 	$PSCallingScript = if ($MyInvocation.PSCommandPath) { $MyInvocation.PSCommandPath | Split-Path -Parent } else { $null }
 	$currLocation = "$(Get-Location)"
-	Write-Verbose "$PSScriptRoot\$PSScriptName $source $destination called by:$PSCallingScript from $currLocation"
+	Write-Verbose "$PSScriptName $source $destination called by:$PSCallingScript from $currLocation"
 
 	function Set-TokenContent($string) {
 		if (!$string) { return $string }
@@ -83,17 +83,14 @@ begin {
 		}
 		return $results
 	}
- 
-	if (!$source) { $source = "$currLocation\*.json" }
-	#Write-Verbose "source:$source"
 
-	@((Split-Path $profile -Parent),$PSScriptRoot,("$currLocation" -ne "$PSScriptRoot" ? $currLocation : ''),(Split-Path $source -Parent)).foreach({
+	#TODO - extract to own script or finish inclusion in Set-Env with Nick
+	function Set-Envs($path) {
 		try {
-			$p = $_
-			if ($p) {
-				#Write-Verbose "checking:$p\*.env*"
-				if (Test-Path $p\*.env*) {
-					Get-ChildItem –Path $p\*.env* | Foreach-Object {
+			if ($path) {
+				#Write-Verbose "checking:$path\*.env*"
+				if (Test-Path $path\*.env*) {
+					Get-ChildItem –Path $path\*.env* | Foreach-Object {
 						try {
 							$f = $_
 							#Write-Verbose "checking:$($f.FullName)"							
@@ -102,12 +99,18 @@ begin {
 								if (-not ($_ -like '#*') -and  ($_ -like '*=*')) {
 									$sp = $_.Split('=')
 									#Write-Verbose "Set-Env $($sp[0])=$($sp[1])"
-									[System.Environment]::SetEnvironmentVariable($sp[0], $sp[1])
+									#$env:${$sp[0]} = $sp[1]
+									#$scope = System.EnvironmentVariableTarget]::User
+									#$scope = System.EnvironmentVariableTarget]::Session
+									#$scope = System.EnvironmentVariableTarget]::Machine
+									#[System.Environment]::SetEnvironmentVariable($sp[0], $sp[1], $scope)
+									[System.Environment]::SetEnvironmentVariable($sp[0], $sp[1])									
+									#Write-Verbose "Set-Env $($sp[0])=$($sp[1]):set"
 								}
 							}
 						}
 						catch {
-							Write-Error "ERROR Set-Env $p-$f" -InformationVariable results
+							Write-Error "ERROR Set-Env $path-$f" -InformationVariable results
 						}
 					}
 				} else { 
@@ -116,23 +119,36 @@ begin {
 			}
 		}
 		catch {
-			Write-Error "ERROR Set-Env $p" -InformationVariable results
+			Write-Error "ERROR Set-Env $path" -InformationVariable results
 		}
+	}
+ 
+	if (!$source) { $source = "$currLocation\*.json" }
+	#Write-Verbose "source:$source"
+	#Write-Verbose "destination:$destination"
+	if (!$destination) {$destination = $source} elseif ($destination.IndexOf(':') -eq -1 -and $destination.Substring(0,1) -ne '\') {$destination = Join-Path $currLocation $destination}
+	#Write-Verbose "destination:$destination"
+	if ($destination) {
+		if (-not (Test-Path $source -PathType Leaf)) {
+			if (-not (Test-Path $destination)) { New-Item -Path $destination -ItemType Directory | Out-Null}			
+		} else {
+			$destParent = Split-Path $destination -Parent
+			if (-not (Test-Path $destParent)) { New-Item -Path $destParent -ItemType Directory | Out-Null}
+		}
+	}
+
+	@((Split-Path $profile -Parent),$PSScriptRoot,("$currLocation" -ne "$PSScriptRoot" ? $currLocation : ''),(Split-Path $source -Parent),($destination -ne $source -and $destParent) ? $destParent : '').foreach({
+		Set-Envs $_ -Verbose
 	})
+	#if ($destination -ne $path -and -not (Test-Path $destination -PathType Leaf)) { Set-Envs $destination }
 
 	if (-not (Test-Path $source) -or (Test-Path $source -PathType Leaf)) {
 		if(-not (Test-Path $source -PathType Leaf)) {
-			#Write-Verbose "Leaf!:$source"
 			$results = Set-TokenContent $source
 		} else {
-			$path = $source
 			$source = Get-Content $source
-			#Write-Verbose "source:$source"
 			$results = Set-TokenContent $source
-			if (!$destination) {$destination = $path} elseif ($destination.IndexOf(':') -eq -1 -and $destination.Substring(0,1) -ne '\') {$destination = Join-Path $currLocation $destination}
-			$destParent = Split-Path $destination -Parent
-			#Write-Verbose "destParent:$destParent"
-			if (-not (Test-Path $destParent)) { New-Item -Path $destParent -ItemType Directory | Out-Null}
+			#Write-Verbose "updated:$destination"
 			$results | Out-File $destination
 		}
 	} else {
@@ -142,25 +158,18 @@ begin {
 			#Write-Verbose "path:$path"
 			if (!(Test-Path $path -PathType Leaf)) {
 				#Write-Verbose "SKIPPED Folder:$path"
-			} else {
-				$string = Set-TokenContent (Get-Content $path)
+			} else {	
+				$string = Set-TokenContent (Get-Content $path)			
 				#Write-Verbose "tokenized:$string"
 				if (!$destination) {
 					#Write-Verbose "updated:$path"
 					$string | Out-File $path
-				} else {
+				} else {					
 					if ($destination.IndexOf('.') -gt -1) {
 						#Write-Verbose "updated:$destination"
 						$string | Out-File $destination
 					} else {
-						#Write-Verbose "path:$path"
-						#Write-Verbose "source:$source"			
-						#Write-Verbose "destination:$destination"
 						$currDestination = "$destination\$($_.Name)"
-						#Write-Verbose "currDestination:$currDestination"
-						$destParent = Split-Path $currDestination -Parent
-						#Write-Verbose "destParent:$destParent"
-						if (-not (Test-Path $destParent)) { New-Item -Path $destParent -ItemType Directory | Out-Null}
 						#Write-Verbose "updated:$currDestination"
 						$string | Out-File $currDestination
 					}
@@ -169,6 +178,6 @@ begin {
 			$results = $path
 		}	
 	}
-	Write-Verbose "$PSScriptName $path end"
+	Write-Verbose "$PSScriptName $source end"
 	return $results
 }

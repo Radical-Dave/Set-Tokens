@@ -1,2 +1,4 @@
 # User-specific files
 tests
+.env
+.env.user
