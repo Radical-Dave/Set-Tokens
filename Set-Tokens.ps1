@@ -105,7 +105,7 @@ begin {
 									#$scope = System.EnvironmentVariableTarget]::Machine
 									#[System.Environment]::SetEnvironmentVariable($sp[0], $sp[1], $scope)
 									[System.Environment]::SetEnvironmentVariable($sp[0], $sp[1])									
-									#Write-Verbose "Set-Env $($sp[0])=$($sp[1]):set"
+									Write-Verbose "Set-Env $($sp[0])=$($sp[1]):set"
 								}
 							}
 						}
