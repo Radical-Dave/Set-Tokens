@@ -55,12 +55,13 @@ Param(
 	[string] $regex = '(\$\()([a-zA-Z0-9\.\-_]*)(\))'
 )
 begin {
-	$ProgressPreference = "SilentlyContinue"		
+	$ProgressPreference = 'SilentlyContinue'
 	$ErrorActionPreference = 'Stop'
-	$PSScriptName = ($MyInvocation.MyCommand.Name.Replace(".ps1",""))
+	$PSScriptVerson = (Test-ScriptFileInfo -Path $MyInvocation.MyCommand | Select-Object -ExpandProperty Version)
+	$PSScriptName = ($MyInvocation.MyCommand.Name.Replace('.ps1',''))
 	$PSCallingScript = if ($MyInvocation.PSCommandPath) { $MyInvocation.PSCommandPath | Split-Path -Parent } else { $null }
 	$currLocation = "$(Get-Location)"
-	Write-Verbose "$PSScriptName $source $destination called by:$PSCallingScript from $currLocation"
+	Write-Verbose "$PSScriptName $PSScriptVerson $source $destination called by:$PSCallingScript from $currLocation"
 
 	function Set-TokenContent($string) {
 		if (!$string) { return $string }
@@ -124,6 +125,10 @@ begin {
 	}
  
 	if (!$source) { $source = "$currLocation\*.json" }
+	if (-not (Test-Path $source)) {
+		Write-Host "$PSScriptName skipped - empty source:$source"
+		return "$PSScriptName skipped - empty source:$source"
+	}
 	#Write-Verbose "source:$source"
 	#Write-Verbose "destination:$destination"
 	if (!$destination) {$destination = $source} elseif ($destination.IndexOf(':') -eq -1 -and $destination.Substring(0,1) -ne '\') {$destination = Join-Path $currLocation $destination}
@@ -178,6 +183,6 @@ begin {
 			$results = $path
 		}	
 	}
-	Write-Verbose "$PSScriptName $source end"
+	Write-Verbose "$PSScriptName end"
 	return $results
 }
