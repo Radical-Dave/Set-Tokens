@@ -4,7 +4,7 @@
 #####################################################
 <#PSScriptInfo
 
-.VERSION 0.9
+.VERSION 0.10
 
 .GUID bfd55243-60dd-4394-a80e-835718187e1f
 
@@ -57,7 +57,7 @@ Param(
 begin {
 	$ProgressPreference = 'SilentlyContinue'
 	$ErrorActionPreference = 'Stop'
-	$PSScriptVerson = (Test-ScriptFileInfo -Path $MyInvocation.MyCommand | Select-Object -ExpandProperty Version)
+	$PSScriptVerson = (Test-ScriptFileInfo -Path $MyInvocation.MyCommand.Path | Select-Object -ExpandProperty Version)
 	$PSScriptName = ($MyInvocation.MyCommand.Name.Replace('.ps1',''))
 	$PSCallingScript = if ($MyInvocation.PSCommandPath) { $MyInvocation.PSCommandPath | Split-Path -Parent } else { $null }
 	$currLocation = "$(Get-Location)"
