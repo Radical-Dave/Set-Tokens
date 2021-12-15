@@ -4,7 +4,7 @@
 #####################################################
 <#PSScriptInfo
 
-.VERSION 0.10
+.VERSION 0.11
 
 .GUID bfd55243-60dd-4394-a80e-835718187e1f
 
@@ -79,7 +79,7 @@ begin {
 				$token = $token.Substring(0, $token.Length - 1)
 			}
 			$value = [System.Environment]::GetEnvironmentVariable($token)
-			#Write-Verbose "Set-TokenContent:$token=$value"
+			Write-Verbose "Set-TokenContent:$token=$value"
 			$results = $results.replace($org,$value)
 		}
 		return $results
@@ -106,7 +106,7 @@ begin {
 									#$scope = System.EnvironmentVariableTarget]::Machine
 									#[System.Environment]::SetEnvironmentVariable($sp[0], $sp[1], $scope)
 									[System.Environment]::SetEnvironmentVariable($sp[0], $sp[1])									
-									Write-Verbose "Set-Env $($sp[0])=$($sp[1]):set"
+									#Write-Verbose "Set-Env $($sp[0])=$($sp[1]):set"
 								}
 							}
 						}
