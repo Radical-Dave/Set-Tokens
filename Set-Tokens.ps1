@@ -4,7 +4,7 @@
 #####################################################
 <#PSScriptInfo
 
-.VERSION 0.11
+.VERSION 0.12
 
 .GUID bfd55243-60dd-4394-a80e-835718187e1f
 
@@ -70,6 +70,7 @@ begin {
 		if (!$tokens) {
 			return $string
 		}
+		$tokensfound = @{}
 		$tokens | Foreach-Object {			
 			$org = $_.groups[0].value
 			$token = $org
@@ -79,9 +80,14 @@ begin {
 				$token = $token.Substring(0, $token.Length - 1)
 			}
 			$value = [System.Environment]::GetEnvironmentVariable($token)
-			Write-Verbose "Set-TokenContent:$token=$value"
+			#Write-Verbose "Set-TokenContent:$token=$value"
+			$tokensfound[$token] = $value
 			$results = $results.replace($org,$value)
 		}
+		Write-Verbose "Tokens updated:"
+		$tokensfound.keys.foreach({
+			Write-Verbose "$($_):$($tokensfound[$_])"
+		})
 		return $results
 	}
 
