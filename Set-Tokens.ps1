@@ -4,7 +4,7 @@
 #####################################################
 <#PSScriptInfo
 
-.VERSION 0.12
+.VERSION 0.13
 
 .GUID bfd55243-60dd-4394-a80e-835718187e1f
 
@@ -159,7 +159,7 @@ begin {
 		} else {
 			$source = Get-Content $source
 			$results = Set-TokenContent $source
-			#Write-Verbose "updated:$destination"
+			Write-Verbose "updated:$destination"
 			$results | Out-File $destination
 		}
 	} else {
@@ -173,15 +173,15 @@ begin {
 				$string = Set-TokenContent (Get-Content $path)			
 				#Write-Verbose "tokenized:$string"
 				if (!$destination) {
-					#Write-Verbose "updated:$path"
+					Write-Verbose "updated:$path"
 					$string | Out-File $path
 				} else {					
 					if ($destination.IndexOf('.') -gt -1) {
-						#Write-Verbose "updated:$destination"
+						Write-Verbose "updated:$destination"
 						$string | Out-File $destination
 					} else {
 						$currDestination = "$destination\$($_.Name)"
-						#Write-Verbose "updated:$currDestination"
+						Write-Verbose "updated:$currDestination"
 						$string | Out-File $currDestination
 					}
 				}
