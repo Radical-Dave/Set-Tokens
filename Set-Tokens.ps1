@@ -4,7 +4,7 @@
 #####################################################
 <#PSScriptInfo
 
-.VERSION 0.13
+.VERSION 0.14
 
 .GUID bfd55243-60dd-4394-a80e-835718187e1f
 
@@ -130,7 +130,7 @@ begin {
 		}
 	}
  
-	if (!$source) { $source = "$currLocation\*.json" }
+	if (!$source) { $source = "$currLocation\*.*" }
 	if (-not (Test-Path $source)) {
 		Write-Host "$PSScriptName skipped - empty source:$source"
 		return "$PSScriptName skipped - empty source:$source"
